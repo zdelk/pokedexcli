@@ -1,54 +1,41 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"net/http"
 )
 
 var offset int
 
-func commandMap() error {
-	apiLink := "https://pokeapi.co/api/v2/location-area/?limit=20"
-	if offset != 0 {
-		apiLink = apiLink + fmt.Sprintf("&offset=%d", offset)
-	}
-	res, err := http.Get(apiLink)
+func commandMapf(cfg *config, l string) error {
+	locationsResp, err := cfg.pokeapiClient.ListLocations(cfg.nextLocationsURL, cfg.cache)
 	if err != nil {
-		return fmt.Errorf("error in request: %v", err)
+		return err
 	}
-	defer res.Body.Close()
 
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return fmt.Errorf("error in reading: %v", err)
-	}
-	var locations PokemonAreas
+	cfg.nextLocationsURL = locationsResp.Next
+	cfg.prevLocationsURL = locationsResp.Previous
 
-	if err := json.Unmarshal(body, &locations); err != nil {
-		return fmt.Errorf("error in unmarshal: %v", err)
+	for _, loc := range locationsResp.Results {
+		fmt.Println(loc.Name)
 	}
-	areas := locations.Results
-
-	for _, area := range areas {
-		fmt.Println(area.Name)
-	}
-	offset += 20
 	return nil
 }
 
-// func commandMapb() {
-// 	offset -= 20
-// 	apiLink := fmt.Sprintf("https://pokeapi.co/api/v2/location-area/?limit=20&offest=%d",offset)
-// }
+func commandMapb(cfg *config, l string) error {
+	if cfg.prevLocationsURL == nil {
+		return errors.New("you're on the first page")
+	}
+	locationsResp, err := cfg.pokeapiClient.ListLocations(cfg.prevLocationsURL, cfg.cache)
+	if err != nil {
+		return err
+	}
 
-type PokemonAreas struct {
-	Count    int    `json:"count"`
-	Next     string `json:"next"`
-	Previous any    `json:"previous"`
-	Results  []struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"results"`
+	cfg.nextLocationsURL = locationsResp.Next
+	cfg.prevLocationsURL = locationsResp.Previous
+
+	for _, loc := range locationsResp.Results {
+		fmt.Println(loc.Name)
+	}
+	return nil
 }
