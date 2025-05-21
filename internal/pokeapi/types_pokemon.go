@@ -1,5 +1,9 @@
 package pokeapi
 
+// // Pokemon Info
+// type PokeInfo struct {
+
+// }
 // Pokemon stats
 type PokeStats struct {
 	Abilities []struct {
